@@ -1,5 +1,5 @@
 name:                kmn-programming
-version:             0.9.0.0
+version:             0.9.0.1
 synopsis:            K_M,N quadratic programming
 -- description:         
 license:             BSD3
@@ -18,9 +18,9 @@ executable kmn-programming
   main-is:             Main.hs
   other-modules:       KMNProgramming
   other-extensions:
-  build-depends:      base >=4.9 && <4.10
+  build-depends:      base >=4.9 && <4.14
                     , x86-64bit >=0.4 && <0.5
-                    , optparse-applicative >=0.13 && <0.14
+                    , optparse-applicative >=0.13 && <0.16
                     , random
                     , random-shuffle
                     , time

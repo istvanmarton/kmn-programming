@@ -36,7 +36,7 @@ main = do
     opts = info (helper <*> options)
       ( fullDesc
      <> progDesc "Maximalize sum of the input matrix multiplied by tensor products of two vectors of +-1 elements"
-     <> header "binaryopt - specialized quadratic binary optimization")
+     <> header "kmn-programming - specialized quadratic binary optimization")
 
     options :: Parser (IO ())
     options = 

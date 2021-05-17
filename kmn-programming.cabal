@@ -18,7 +18,7 @@ executable kmn-programming
   main-is:             Main.hs
   other-modules:       KMNProgramming
   other-extensions:
-  build-depends:      base >=4.9 && <4.14
+  build-depends:      base >=4.9 && <4.15
                     , x86-64bit >=0.4 && <0.5
                     , optparse-applicative >=0.13 && <0.16
                     , random

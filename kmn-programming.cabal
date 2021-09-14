@@ -10,7 +10,6 @@ maintainer:          divipp@gmail.com
 category:            Math
 build-type:          Simple
 extra-source-files:  ChangeLog.md
-                     Makefile
                      SplitProblem.hs
 cabal-version:       >=1.10
 
@@ -18,9 +17,9 @@ executable kmn-programming
   main-is:             Main.hs
   other-modules:       KMNProgramming
   other-extensions:
-  build-depends:      base >=4.9 && <4.15
+  build-depends:      base >=4.9 && <4.16
                     , x86-64bit >=0.4 && <0.5
-                    , optparse-applicative >=0.13 && <0.16
+                    , optparse-applicative >=0.13 && <0.17
                     , random
                     , random-shuffle
                     , time

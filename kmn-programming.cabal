@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 
 executable kmn-programming
   main-is:             Main.hs
+  ghc-options:         -threaded
   other-modules:       KMNProgramming
   other-extensions:
   build-depends:      base >=4.9 && <4.16

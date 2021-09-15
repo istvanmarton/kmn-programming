@@ -1,6 +1,7 @@
 {-# language PatternGuards #-}
 {-# language ViewPatterns #-}
 {-# language NoMonomorphismRestriction #-}
+{-# language BlockArguments #-}
 import Data.Function
 import Data.List
 import Data.Monoid
@@ -9,6 +10,7 @@ import Data.Time.Clock
 import Control.Arrow
 import Control.Monad
 import Control.Concurrent
+import Control.Concurrent.Chan
 import Options.Applicative
 import System.IO
 import System.Random
@@ -85,7 +87,7 @@ main = do
             <|> -}Left  <$> argument str (metavar "FILE" <> action "filenames")
             )
         <*> optional (option auto $ long "timeout" <> help "timeout in seconds")
-        <*> optional (option auto $ long "partial" <> help "do partial computation")
+        <*> (fromMaybe (Partial (Just 1) 0) <$> optional (option auto $ long "partial" <> help "do partial computation"))
 
 readChars c = maybeReader f where
     f c' | c == c' = Just ()
@@ -105,18 +107,22 @@ splitSC s = case span (/= ',') s of
 checkPred err p | p = return ()
 checkPred err _ = error err
 
-data Partial = Partial Int Int
+data Partial
+    = Partial (Maybe Int) Int
     deriving (Eq, Ord, Show)
 
 instance Read Partial where
+    readsPrec _ ('*':'/':'2':'^': s)
+        | [(j,s)] <- reads s
+        = [(Partial Nothing j, s)]
     readsPrec _ s
         | [(i,'/':'2':'^':s)] <- reads s
         , [(j,s)] <- reads s
-        = [(Partial i j, s)]
+        = [(Partial (Just i) j, s)]
     readsPrec _ _ = []
 
-compute :: Bool -> Bool -> Maybe Method -> Bool -> Bool -> Bool -> Maybe FilePath -> Maybe FilePath -> Maybe Int -> Int -> Int -> Int -> Maybe FilePath -> Either FilePath [[String]] -> Maybe Int -> Maybe Partial -> IO ()
-compute del transp met mult printmat silent levelin levelout level_ tra uroll ali out fname timeout partial = do
+compute :: Bool -> Bool -> Maybe Method -> Bool -> Bool -> Bool -> Maybe FilePath -> Maybe FilePath -> Maybe Int -> Int -> Int -> Int -> Maybe FilePath -> Either FilePath [[String]] -> Maybe Int -> Partial -> IO ()
+compute del transp met mult printmat silent levelin levelout level_ tra uroll ali out fname timeout (Partial tasks splitPower) = do
     gen <- newStdGen
     s <- either (fmap (filter (not . null) . map words . lines) . readFile) return fname
 
@@ -148,12 +154,8 @@ compute del transp met mult printmat silent levelin levelout level_ tra uroll al
             . method
             $ mat_
 
-        mat' = maybe mat (\(Partial i j) -> (mkPartial (2^j-i) j mat)) partial
-
-        nx = length mat'
+        nx = length mat - splitPower
         level = fromMaybe (min (nx - length levs - 1) $ round $ fromIntegral nx / 4) level_
-
-        (res, levs') = umes_ (not silent) ali ali tra uroll level levs mat'
 
     checkPred "matix row lengths differ" $ length ns == 1
     checkPred "number of rows should be less than 129" $ nx <= 128
@@ -169,17 +171,33 @@ compute del transp met mult printmat silent levelin levelout level_ tra uroll al
         when (asum (concat vs) >= 2^31) $ output "!!! warning: overflow may happen !!!"
         output $ show nx ++ " x " ++ show width
         output $ "levels: " ++ show level
-        when printmat $ output $ showMat mat'
-    tid <- myThreadId
+
+    let tasks' = maybe [1..2^splitPower] pure tasks
+
+    resChan <- newChan
+
+    tids <- forM tasks' \i -> forkIO $ do
+
+        let mat' = mkPartial (2^splitPower-i) splitPower mat
+
+        when (not silent && printmat && i == head tasks') $ output $ showMat mat'
+
+        (res, levs') <- umes_ (not silent) ali ali tra uroll level levs mat'
+
+        case levelout of
+            Just f | i == head tasks' -> writeFile f $ unlines $ map show levs'
+            _ -> return ()
+
+        writeChan resChan res
+
     case timeout of
         Nothing -> return ()
         Just t -> void $ forkIO $ do
             threadDelay $ 1000000 * t
-            killThread tid
-    case levelout of
-        Nothing -> return ()
-        Just f -> writeFile f $ unlines $ map show levs'
-    output $ show res
+            forM_ tids killThread
+
+    ress <- forM tasks' \_ -> readChan resChan
+    output $ show $ maximum ress
 
 mkPartial i 0 mat = mat
 mkPartial i j (x: y: mat) = mkPartial (i`div`2) (j-1) (zipWith (if odd i then (+) else (-)) x y: mat)
@@ -188,9 +206,9 @@ timeRandom :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
 timeRandom r y y' sy x x' sx (fromIntegral -> z) (fromIntegral -> z') rep = forM_ (f $ zip [x, x+sx..x'] [y, y+sy..y']) $ \((i, j), z) -> do
     putStr $ show (i,j,z) ++ "  " ++ show (log $ fromIntegral i) ++ "    "
     mats <- replicateM rep $ replicateM i $ replicateM j $ fromIntegral <$> randomRIO (-r, r)
-    let opt = umes False 8 8 0 1 z [] i j
     t1 <- getCurrentTime
-    forM_ mats $ \mat -> return $! fst $ opt mat
+    let opt = umes False 8 8 0 1 z [] i j
+    forM_ mats $ \mat -> fst <$> opt mat
     t2 <- getCurrentTime
     putStrLn $ show $ log $ (realToFrac (diffUTCTime t2 t1) :: Double) / fromIntegral rep
   where
@@ -200,13 +218,14 @@ printTestMat :: Maybe FilePath -> Int -> IO ()
 printTestMat out n = maybe putStrLn writeFile out $ showMat $ testMat n
 
 testTestMat :: Maybe Int -> IO ()
-testTestMat n_
-    | f n == res = putStrLn "OK"
-    | otherwise = error "fatal error"
+testTestMat n_ = do
+    res <- fst <$> umes False 8 8 0 1 (length m `div` 4) [] (length m) (length $ head m) m
+    case () of
+      _ | f n == res -> putStrLn "OK"
+        | otherwise -> error "fatal error"
   where
     n = fromMaybe 6 n_
     m = testMat n
-    res = fst $ umes False 8 8 0 1 (length m `div` 4) [] (length m) (length $ head m) m
     f 2 = 4
     f 3 = 36
     f 4 = 120

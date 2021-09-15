@@ -318,6 +318,13 @@ The `--aling` option places certain labels in the assembly code on memory addres
 dividable by *n*. The number *n* can be given after `--align`.
 
 
+### Parallel computation
+
+The following command runs the computation in 2^2 threads:
+
+    $ kmn-programming Wmat44.txt --partial */2^2
+
+
 ### Distributed computation
 
 The `--levelin`, `--levelout` and `--partial` options are implemented to support distributed computation

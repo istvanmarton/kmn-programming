@@ -7,7 +7,6 @@ module KMNProgramming where
 import Control.Monad hiding (unless)
 import Control.Exception (evaluate)
 import Foreign
-import Foreign.Marshal.Unsafe
 
 import CodeGen.X86
 
@@ -39,15 +38,15 @@ instance Callable T where dynCCall = callPBII
 foreign import ccall "dynamic" callIO :: FunPtr (IO ()) -> IO ()
 instance Callable (IO ()) where dynCCall = callIO
 
-umes_ :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> [[Int32]] -> (Int32, [Int32])
+umes_ :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> [[Int32]] -> IO (Int32, [Int32])
 umes_ trr ali ali' tr uroll lev levs m = umes trr ali ali' tr uroll lev levs (length m) (length $ head m) m
 
 {-# NOINLINE umes #-}
-umes :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> Int -> Int -> [[Int32]] -> (Int32, [Int32])
+umes :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> Int -> Int -> [[Int32]] -> IO (Int32, [Int32])
 umes trr ali ali' tr uroll lev levs rows_ d_ = fun
   where
     fun (align' (4*uroll) -> a: as)
-        = unsafeLocalState $ withArrayAligned (concat $ a: zipWith (++) ((: [0,0,0]) <$> (replicate (rows-length levs) 0 ++ levs)) as) (2^8) $ \r -> do
+        = withArrayAligned (concat $ a: zipWith (++) ((: [0,0,0]) <$> (replicate (rows-length levs) 0 ++ levs)) as) (2^8) $ \r -> do
             x <- evaluate $ code r
             xs <- forM [d+d1*lev, d+d1*(lev+1)..d+d1*(rows-1)] $ peekElemOff r
             return (x, xs)

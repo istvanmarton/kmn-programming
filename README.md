@@ -37,7 +37,7 @@ The program does the following steps:
 
 ## Limitations
 
--   The minimum of the matrix width and height should be less than 129.
+-   Input matrix width and height should be less than 129.
 -   The sum of the absolute values of the input matrix elements should be less than 2^31.
     The upper limit can be relaxed to 2^63 in some cases.
 
@@ -308,7 +308,7 @@ evaluate the skipping criteria.
 The value of n can be given at the command line with the `--level` option.
 If `--level` is missing, then n is one fourth of the number of rows.
 
-The `--unroll` unroll option performs loop unrolling on the inner loop of generated assembly code.
+The `--unroll` option performs loop unrolling on the inner loop of generated assembly code.
 Details:  
 Each row is padded with 0 values such they will contain 2*ni* elements.
 The inner row will be executed *i* times, evaluating 2*n* elements each time.

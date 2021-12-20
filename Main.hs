@@ -11,7 +11,7 @@ import Control.Arrow
 import Control.Monad
 import Control.Concurrent
 import Control.Concurrent.Chan
-import Options.Applicative
+import Options.Applicative hiding (asum)
 import System.IO
 import System.Random
 import System.Random.Shuffle
@@ -76,6 +76,7 @@ main = do
         <*> switch (short 'm' <> long "multiply" <> help "multiply rows by +-1 to improve the first guess")
         <*> switch (short 'p' <> long "print" <> help "print matrix before optimization")
         <*> switch (short 's' <> long "silent" <> help "print just the result")
+        <*> (fromMaybe 0 <$> optional (option auto $ short 'g' <> long "guess" <> metavar "NAT" <> help "guessed result - default is 0" <> completeWith ["0"]))
         <*> optional (strOption $ long "levelin" <> metavar "FILE" <> help "precomputed levels input file" <> action "filenames")
         <*> optional (strOption $ long "levelout" <> metavar "FILE" <> help "levels output file" <> action "filenames")
         <*> optional (option auto $ short 'l' <> long "level"  <> metavar "NAT" <> help "level - default is number of rows / 4")
@@ -121,8 +122,10 @@ instance Read Partial where
         = [(Partial (Just i) j, s)]
     readsPrec _ _ = []
 
-compute :: Bool -> Bool -> Maybe Method -> Bool -> Bool -> Bool -> Maybe FilePath -> Maybe FilePath -> Maybe Int -> Int -> Int -> Int -> Maybe FilePath -> Either FilePath [[String]] -> Maybe Int -> Partial -> IO ()
-compute del transp met mult printmat silent levelin levelout level_ tra uroll ali out fname timeout (Partial tasks splitPower) = do
+compute
+  :: Bool -> Bool -> Maybe Method -> Bool -> Bool -> Bool -> Int -> Maybe FilePath -> Maybe FilePath -> Maybe Int -> Int -> Int -> Int
+  -> Maybe FilePath -> Either FilePath [[String]] -> Maybe Int -> Partial -> IO ()
+compute del transp met mult printmat silent guess levelin levelout level_ tra uroll ali out fname timeout (Partial tasks splitPower) = do
     gen <- newStdGen
     s <- either (fmap (filter (not . null) . map words . lines) . readFile) return fname
 
@@ -140,7 +143,7 @@ compute del transp met mult printmat silent levelin levelout level_ tra uroll al
           where
             t = transpose xs
 
-        ns@ ~[width] = nub $ length <$> mat_
+        ns@(~[width]) = nub $ length <$> mat_
         output = maybe putStrLn writeFile out
 
         method = case met of
@@ -182,7 +185,7 @@ compute del transp met mult printmat silent levelin levelout level_ tra uroll al
 
         when (not silent && printmat && i == head tasks') $ output $ showMat mat'
 
-        (res, levs') <- umes_ (not silent) ali ali tra uroll level levs mat'
+        (res, levs') <- umes_ guess (not silent) ali ali tra uroll level levs mat'
 
         case levelout of
             Just f | i == head tasks' -> writeFile f $ unlines $ map show levs'
@@ -207,7 +210,7 @@ timeRandom r y y' sy x x' sx (fromIntegral -> z) (fromIntegral -> z') rep = forM
     putStr $ show (i,j,z) ++ "  " ++ show (log $ fromIntegral i) ++ "    "
     mats <- replicateM rep $ replicateM i $ replicateM j $ fromIntegral <$> randomRIO (-r, r)
     t1 <- getCurrentTime
-    let opt = umes False 8 8 0 1 z [] i j
+    let opt = umes 0 False 8 8 0 1 z [] i j
     forM_ mats $ \mat -> fst <$> opt mat
     t2 <- getCurrentTime
     putStrLn $ show $ log $ (realToFrac (diffUTCTime t2 t1) :: Double) / fromIntegral rep
@@ -219,7 +222,7 @@ printTestMat out n = maybe putStrLn writeFile out $ showMat $ testMat n
 
 testTestMat :: Maybe Int -> IO ()
 testTestMat n_ = do
-    res <- fst <$> umes False 8 8 0 1 (length m `div` 4) [] (length m) (length $ head m) m
+    res <- fst <$> umes 0 False 8 8 0 1 (length m `div` 4) [] (length m) (length $ head m) m
     case () of
       _ | f n == res -> putStrLn "OK"
         | otherwise -> error "fatal error"

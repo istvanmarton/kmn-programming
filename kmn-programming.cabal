@@ -1,5 +1,5 @@
 name:                kmn-programming
-version:             0.9.0.1
+version:             0.9.1
 synopsis:            K_M,N quadratic programming
 -- description:         
 license:             BSD3
@@ -15,10 +15,10 @@ cabal-version:       >=1.10
 
 executable kmn-programming
   main-is:             Main.hs
-  ghc-options:         -threaded
+  ghc-options:         -threaded -rtsopts=all -O2
   other-modules:       KMNProgramming
   other-extensions:
-  build-depends:      base >=4.9 && <4.16
+  build-depends:      base >=4.9 && <4.17
                     , x86-64bit >=0.4 && <0.5
                     , optparse-applicative >=0.13 && <0.17
                     , random

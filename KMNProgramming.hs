@@ -38,12 +38,12 @@ instance Callable T where dynCCall = callPBII
 foreign import ccall "dynamic" callIO :: FunPtr (IO ()) -> IO ()
 instance Callable (IO ()) where dynCCall = callIO
 
-umes_ :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> [[Int32]] -> IO (Int32, [Int32])
-umes_ trr ali ali' tr uroll lev levs m = umes trr ali ali' tr uroll lev levs (length m) (length $ head m) m
+umes_ :: Int -> Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> [[Int32]] -> IO (Int32, [Int32])
+umes_ guess trr ali ali' tr uroll lev levs m = umes guess trr ali ali' tr uroll lev levs (length m) (length $ head m) m
 
 {-# NOINLINE umes #-}
-umes :: Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> Int -> Int -> [[Int32]] -> IO (Int32, [Int32])
-umes trr ali ali' tr uroll lev levs rows_ d_ = fun
+umes :: Int -> Bool -> Int -> Int -> Int -> Int -> Int -> [Int32] -> Int -> Int -> [[Int32]] -> IO (Int32, [Int32])
+umes guess trr ali ali' tr uroll lev levs rows_ d_ = fun
   where
     fun (align' (4*uroll) -> a: as)
         = withArrayAligned (concat $ a: zipWith (++) ((: [0,0,0]) <$> (replicate (rows-length levs) 0 ++ levs)) as) (2^8) $ \r -> do
@@ -60,6 +60,7 @@ umes trr ali ali' tr uroll lev levs rows_ d_ = fun
     code :: Ptr Int32 -> Int32
     code = compile $ saveNonVolatile $ mdo
         mov rdx $ fromIntegral $ 4*d1*(rows-length levs)
+        xor_ rax rax
         mloop <- label
         cmp rdx $ fromIntegral $ 4*d1*lev
         unless Z $ do
@@ -72,6 +73,7 @@ umes trr ali ali' tr uroll lev levs rows_ d_ = fun
 
         xor_ rdx rdx
         mov r10 $ fromIntegral $ fromEnum trr
+        mov rax $ fromIntegral guess
         call $ ipRelValue main
         jmp end
 
@@ -81,7 +83,6 @@ umes trr ali ali' tr uroll lev levs rows_ d_ = fun
         mov r11 $ fromIntegral $ 4*d1
         mov r12 $ fromIntegral $ d `div` (4*uroll)
         mov rsi (-16)
-        xor_ rax rax
         xor_ r13 r13
         xor_ r14 r14
         lea rdi $ addr8 $ rdi + rdx

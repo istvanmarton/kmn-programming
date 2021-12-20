@@ -7,6 +7,7 @@ import Data.List
 import Data.Monoid
 import Data.Maybe
 import Data.Time.Clock
+import Data.IORef
 import Control.Arrow
 import Control.Monad
 import Control.Concurrent
@@ -126,6 +127,7 @@ compute
   :: Bool -> Bool -> Maybe Method -> Bool -> Bool -> Bool -> Int -> Maybe FilePath -> Maybe FilePath -> Maybe Int -> Int -> Int -> Int
   -> Maybe FilePath -> Either FilePath [[String]] -> Maybe Int -> Partial -> IO ()
 compute del transp met mult printmat silent guess levelin levelout level_ tra uroll ali out fname timeout (Partial tasks splitPower) = do
+    maxV <- newIORef guess
     gen <- newStdGen
     s <- either (fmap (filter (not . null) . map words . lines) . readFile) return fname
 
@@ -185,7 +187,11 @@ compute del transp met mult printmat silent guess levelin levelout level_ tra ur
 
         when (not silent && printmat && i == head tasks') $ output $ showMat mat'
 
-        (res, levs') <- umes_ guess (not silent) ali ali tra uroll level levs mat'
+        g <- readIORef maxV
+
+        (res, levs') <- umes_ g (not silent) ali ali tra uroll level levs mat'
+
+        atomicModifyIORef' maxV \g -> (max g $ fromIntegral res, ())
 
         case levelout of
             Just f | i == head tasks' -> writeFile f $ unlines $ map show levs'

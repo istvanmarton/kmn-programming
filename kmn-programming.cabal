@@ -1,7 +1,8 @@
 name:                kmn-programming
-version:             0.9.1
+version:             0.9.2
 synopsis:            K_M,N quadratic programming
--- description:         
+homepage:            https://github.com/divipp/kmn-programming
+description:         Integer K_m,n quadratic programming problem solving with x86-64 SIMD instructions. See README.md for details.
 license:             BSD3
 license-file:        LICENSE
 author:              Péter Diviánszky
@@ -12,6 +13,10 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
                      SplitProblem.hs
 cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: https://github.com/divipp/kmn-programming
 
 executable kmn-programming
   main-is:             Main.hs

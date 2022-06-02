@@ -2,11 +2,13 @@
 This repository contains an implementation of a branch-and-bound algorithm solving the integer *K_m,n* quadratic
 optimization problem.
 
+A modified problem is solved at [https://github.com/divipp/l2-norm](https://github.com/divipp/l2-norm)
+
 # Introduction
 
 ## Integer *K_m,n* quadratic programming problem
 
-Let *A* is an *m*×*n* matrix of integer values.  
+Let *A* be an *m*×*n* matrix of integer values.  
 The goal is to compute the maximal value of *XAY*, where *X* and *Y* are vectors over {-1,1}.
 
 
